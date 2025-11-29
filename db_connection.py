@@ -71,3 +71,50 @@ def add_artifact(artifact_data):
             st.error(f"Error adding artifact: {e}")
             return False
     return False
+
+def update_church(original_church_name, update_data):
+    """
+    Updates a church document. 
+    Handles archiving the previous priest if the priest name has changed.
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            # Find the existing church
+            existing_church = db['churches'].find_one({"church_name": original_church_name})
+            
+            if not existing_church:
+                st.error(f"Church '{original_church_name}' not found.")
+                return False
+            
+            # Check if priest name is changing
+            new_priest_name = update_data.get("priest_name")
+            current_priest_name = existing_church.get("priest_name")
+            
+            if new_priest_name and new_priest_name != current_priest_name:
+                # Add current priest to previous_priests list
+                previous_entry = {
+                    "name": current_priest_name,
+                    "archived_at": pd.Timestamp.now().isoformat()
+                }
+                
+                # Update operation: set new fields and push to previous_priests
+                db['churches'].update_one(
+                    {"church_name": original_church_name},
+                    {
+                        "$set": update_data,
+                        "$push": {"previous_priests": previous_entry}
+                    }
+                )
+            else:
+                # Just update the fields
+                db['churches'].update_one(
+                    {"church_name": original_church_name},
+                    {"$set": update_data}
+                )
+                
+            return True
+        except Exception as e:
+            st.error(f"Error updating church: {e}")
+            return False
+    return False

@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
 from db_connection import get_all_churches
+from auth import check_authentication
 
 st.set_page_config(page_title="Church Directory", page_icon="⛪", layout="wide")
+
+# Check Authentication
+check_authentication()
 
 st.title("Church Directory")
 
@@ -52,8 +56,38 @@ else:
             "email_id": "Email",
             "address": "Address"
         },
-        use_container_width=True,
+        width='stretch',
         hide_index=True
     )
     
     st.metric("Total Churches Found", len(filtered_df))
+
+    # Show details for selected church if "All" is not selected
+    if selected_church != "All" and not filtered_df.empty:
+        st.markdown("---")
+        st.subheader(f"Details for {selected_church}")
+        
+        church_details = filtered_df.iloc[0]
+        
+        # Display Previous Priests
+        previous_priests = church_details.get("previous_priests", [])
+        
+        if isinstance(previous_priests, list) and previous_priests:
+            st.write("### Previous Priests")
+            
+            # Create a DataFrame for better display
+            history_data = []
+            for entry in previous_priests:
+                if isinstance(entry, dict):
+                    history_data.append({
+                        "Name": entry.get("name", "Unknown"),
+                        "Archived At": entry.get("archived_at", "Unknown")
+                    })
+                else:
+                    # Handle legacy or simple string format if any
+                    history_data.append({"Name": str(entry), "Archived At": "N/A"})
+            
+            if history_data:
+                st.table(pd.DataFrame(history_data))
+        else:
+            st.info("No history of previous priests recorded.")
